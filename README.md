@@ -46,23 +46,20 @@ Open http://localhost:5173, create a room, and share the URL to collaborate.
 Two Postgres tables (`backend/src/database/migrations/001_init.ts`), managed with Kysely migrations:
 
 ```
-rooms      id (uuid, pk)  name  created_at
-elements   id (uuid, pk)  room_id (fk -> rooms.id, cascade)  type ('pen'|'rectangle'|'circle')
-           color  stroke_width  data (jsonb)  created_by  created_at
+rooms      id, name, created_at
+elements   id, room_id, type, color, stroke_width, data, timestamps
 ```
 
-`data` holds either `{ points: [{x,y}, ...] }` for pen strokes or `{ x, y, width, height }` for shape
-bounding boxes. `Database`/`ElementsTable`/`RoomsTable` types in `backend/src/database/database.types.ts`
-give Kysely full compile-time query safety.
+`data` holds either `{ points: [{x,y}, ...] }` for pen strokes or `{ x, y, width, height }` for shape bounding boxes. 
 
-### REST API (`backend/src/rooms`)
+### REST APIs
 
 | Route | Purpose |
 |---|---|
 | `POST /rooms` | Create a room, returns `{ id, name, createdAt }` |
 | `GET /rooms/:id` | Look up a room (used to validate a pasted join link before opening a socket) |
 
-### WebSocket contract (`backend/src/whiteboard-gateway/whiteboard.gateway.ts`)
+### WebSocket contract 
 
 | Client → Server | Server → Client | Effect |
 |---|---|---|
@@ -78,18 +75,11 @@ it's inherently ephemeral and rebuilt from live socket connections on every join
 
 ### Frontend
 
-- **State** — a single Zustand store (`frontend/src/store/useWhiteboardStore.ts`) holds `elements` (persisted,
+- **State** — a single Zustand store holds `elements` (persisted,
   finalized) and `liveElements` (in-progress, keyed by id, both local and remote) separately, plus tool/color/
-  stroke-width UI state. Keeping "live" and "final" elements apart means an in-progress remote stroke never
-  gets treated as done, and `element:end` can replace a live entry in place (avoiding a z-order flicker when
+  stroke-width UI state. Keeping "live" and "final" elements apart means an in-progress remote stroke never gets treated as done, and `element:end` can replace a live entry in place (avoiding a z-order flicker when
   the server's persisted copy arrives).
-- **Rendering** — `Canvas.tsx` owns a single `<canvas>`, resized via `ResizeObserver` and scaled for
-  `devicePixelRatio`. It re-renders on every store change by redrawing `elements` then `liveElements` on top
-  (`utils/draw.ts`); there's no separate RAF loop since Zustand's subscription already batches this correctly
-  for V1's element counts.
-- **Local drawing** is optimistic: on pointer-up the finished element is written straight into `elements`
-  (not just cleared from `liveElements`), so the artist sees their stroke settle instantly instead of waiting
-  on a round trip; the server's `element:end` echo then reconciles it by id.
-- **Identity** — `userId` is a UUID persisted in `localStorage` (`utils/id.ts`), and each user's avatar/cursor
-  color is deterministically derived from that id (`utils/color.ts`), so a refresh keeps the same identity
-  and color within a room.
+- **Rendering** — `Canvas.tsx` owns a single `<canvas>`, resized via `ResizeObserver` and scaled for `devicePixelRatio`. It re-renders on every store change by redrawing `elements` then `liveElements` on top
+  (`utils/draw.ts`).
+- **Local drawing** is optimistic: on pointer-up the finished element is written straight into `elements` (not just cleared from `liveElements`), so the artist sees their stroke settle instantly instead of waiting on a round trip; the server's `element:end` echo then reconciles it by id.
+- **Identity** — `userId` is a UUID persisted in `localStorage` (`utils/id.ts`), and each user's avatar/cursor color is deterministically derived from that id (`utils/color.ts`), so a refresh keeps the same identity and color within a room.
