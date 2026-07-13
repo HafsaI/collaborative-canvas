@@ -43,7 +43,7 @@ Open http://localhost:5173, create a room, and share the URL to collaborate.
 
 ### Data model
 
-Two Postgres tables (`backend/src/database/migrations/001_init.ts`), managed with Kysely migrations:
+Two Postgres tables, managed with Kysely migrations:
 
 ```
 rooms      id, name, created_at
@@ -66,7 +66,7 @@ elements   id, room_id, type, color, stroke_width, data, timestamps
 | `room:join` | `room:init`, `room:users` | Joins the Socket.IO room, sends back all persisted elements + current presence list |
 | `room:leave` | `room:users` | Removes the user from the in-memory presence map for that room |
 | `element:start` / `element:update` | relayed as-is | Live in-progress stroke/shape, not yet persisted — this is what makes drawing feel real-time for peers |
-| `element:end` | `element:end` (with saved DTO) | Persists the finished element via `ElementsService.create`, then broadcasts the canonical row to everyone including the sender |
+| `element:end` | `element:end` Persists the finished element via `ElementsService.create`, then broadcasts the canonical row to everyone including the sender |
 | `board:undo` | `board:undo { id }` | Deletes the most recently created element in the room (`ORDER BY created_at DESC LIMIT 1`) |
 | `board:clear` | `board:clear` | Deletes every element for the room |
 
